@@ -1,65 +1,144 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
 import { useDashboard } from '@/hooks/useDashboard'
-import UploadZone from '@/components/dashboard/UploadZone'
-import KPIStrip from '@/components/dashboard/KPIStrip'
+import CountryToggle from '@/components/dashboard/CountryToggle'
+import KPIBooking from '@/components/dashboard/KPIBooking'
+import KPIHealth from '@/components/dashboard/KPIHealth'
+import BookingOutcomes from '@/components/dashboard/BookingOutcomes'
 import BucketBarChart from '@/components/dashboard/BucketBarChart'
 import LTVDonutChart from '@/components/dashboard/LTVDonutChart'
-import AvgMedianChart from '@/components/dashboard/AvgMedianChart'
+import AvgPercentileChart from '@/components/dashboard/AvgPercentileChart'
+import ScatterPlot from '@/components/dashboard/ScatterPlot'
 import BucketTable from '@/components/dashboard/BucketTable'
-import ScatterChart from '@/components/dashboard/ScatterChart'
+import HealthTable from '@/components/dashboard/HealthTable'
 
-export default function Page() {
+function SectionLabel({ children }) {
+  return (
+    <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-3">
+      {children}
+    </p>
+  )
+}
+
+function Divider() {
+  return <hr className="border-gray-100 my-6" />
+}
+
+const TYPE_TABS = [
+  { id: 'all', label: 'All' },
+  { id: 'sub', label: 'Subscribers' },
+  { id: 'non', label: 'Non-subscribers' },
+]
+
+function relativeTime(isoString) {
+  if (!isoString) return null
+  const diff  = Date.now() - new Date(isoString).getTime()
+  const mins  = Math.floor(diff / 60000)
+  const hours = Math.floor(diff / 3600000)
+  if (mins < 60) return mins + ' minutes ago'
+  if (hours < 24) return hours + ' hours ago'
+  return new Date(isoString).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
+export default function DashboardPage() {
+  const router = useRouter()
   const {
-    isLoading,
-    error,
-    fileName,
-    dateRange,
-    hasData,
+    country, setCountry,
+    isReady,
+    isLoadingFromSupabase,
+    supabaseError, setSupabaseError,
+    uploadedAt,
+    paymentsCount,
+    subscriberCount,
+    dateRange, setDateRange,
+    customerType, setCustomerType,
+    rawPercentile, setRawPercentile,
+    rawRepeatThreshold, setRawRepeatThreshold,
+    percentile, repeatThreshold,
+    isComputing,
+    filteredCustomers,
     kpis,
     bucketStats,
-    filteredCustomers,
-    percentile,
-    repeatThreshold,
-    handleFileUpload,
-    setDateRange,
-    setPercentile,
-    setRepeatThreshold,
+    bookingOutcomes,
+    allBucketStats,
+    subBucketStats,
+    nonBucketStats,
   } = useDashboard()
 
-  if (!hasData) {
+  // ── Loading state ─────────────────────────────────────────────────────────
+  if (isLoadingFromSupabase) {
     return (
-      <UploadZone
-        onFileUpload={handleFileUpload}
-        isLoading={isLoading}
-        error={error}
-      />
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm text-gray-500">Loading dashboard data...</p>
+        </div>
+      </div>
     )
   }
 
-  const repeatBadge = repeatThreshold === 1
+  // ── Empty state ───────────────────────────────────────────────────────────
+  if (!isReady) {
+    const countryLabel = country === 'canada' ? 'Canada' : 'United States'
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-sm text-gray-500 mb-1">No data uploaded for {countryLabel} yet.</p>
+          <p className="text-xs text-gray-400 mb-4">Visit the admin panel to upload data.</p>
+          <button
+            onClick={() => router.push('/admin')}
+            className="text-xs bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+          >
+            Go to upload
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  const repeatBadge = rawRepeatThreshold === 1
     ? '1+ booking'
-    : `${repeatThreshold}+ bookings`
+    : `${rawRepeatThreshold}+ bookings`
+
+  const updatedLabel = relativeTime(uploadedAt)
 
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-6xl mx-auto px-6 py-8">
 
+        {/* Supabase error banner */}
+        {supabaseError && (
+          <div className="flex items-start justify-between gap-4 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-6">
+            <p className="text-xs text-amber-700">
+              Could not connect to database. Showing locally loaded data.
+            </p>
+            <button
+              onClick={() => setSupabaseError(null)}
+              className="text-xs text-amber-600 hover:text-amber-800 shrink-0 underline"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
+
         {/* Top bar */}
-        <div className="flex items-start justify-between flex-wrap gap-4 mb-8">
+        <div className="flex items-start justify-between flex-wrap gap-4 mb-2">
           <div>
             <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">
               Booking frequency dashboard
             </h1>
             <p className="text-sm text-gray-400 mt-1">
               Car detailing marketplace · customer cohort analysis
-              {fileName && (
-                <span className="ml-2 text-blue-400">· {fileName}</span>
-              )}
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            <div className={`flex items-center gap-1.5 transition-opacity duration-150 ${isComputing ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+              <div className="w-3 h-3 border border-blue-400 border-t-transparent rounded-full animate-spin" />
+              <span className="text-xs text-gray-400">Updating...</span>
+            </div>
+
             <select
               value={dateRange}
               onChange={e => setDateRange(Number(e.target.value))}
@@ -72,54 +151,51 @@ export default function Page() {
               <option value={0}>All time</option>
             </select>
 
-            <label className="text-xs border border-gray-200 rounded-lg px-3 py-1.5 bg-white text-gray-700 cursor-pointer hover:bg-gray-50 transition-colors">
+            <div className="flex items-center gap-2">
+              <CountryToggle country={country} onChange={setCountry} />
+              {updatedLabel && (
+                <span className="text-xs text-gray-400 whitespace-nowrap">
+                  Updated {updatedLabel}
+                </span>
+              )}
+            </div>
+
+            <button
+              onClick={() => router.push('/admin')}
+              className="text-xs border border-gray-200 rounded-lg px-3 py-1.5 bg-white text-gray-700 hover:bg-gray-50 transition-colors"
+            >
               Upload new
-              <input
-                type="file"
-                accept=".csv"
-                className="hidden"
-                onChange={e => {
-                  const file = e.target.files[0]
-                  if (file) handleFileUpload(file)
-                }}
-              />
-            </label>
+            </button>
           </div>
         </div>
 
-        {error && (
-          <div className="mb-6 px-4 py-3 bg-red-50 border border-red-100 rounded-lg text-xs text-red-600">
-            {error}
-          </div>
-        )}
+        {/* Data summary line */}
+        <p className="text-xs text-gray-400 mb-8">
+          {kpis.totalCustomers.toLocaleString()} customers
+          {paymentsCount > 0 ? ` · ${paymentsCount.toLocaleString()} payments` : ''}
+          {subscriberCount > 0 ? ` · ${subscriberCount.toLocaleString()} subscribers` : ''}
+          {dateRange > 0 ? ` · Last ${dateRange} days` : ' · All time'}
+        </p>
 
-        {/* Metric sliders */}
+        {/* Sliders */}
         <div className="flex flex-col gap-2 mb-8">
           <div className="flex items-center gap-4 bg-white border border-gray-100 rounded-xl px-5 py-3">
             <span className="text-xs font-medium text-gray-500 w-40 shrink-0">Percentile metric</span>
             <input
-              type="range"
-              min={1}
-              max={99}
-              step={1}
-              defaultValue={50}
-              onChange={e => setPercentile(Number(e.target.value))}
+              type="range" min={1} max={99} step={1} defaultValue={50}
+              onChange={e => setRawPercentile(Number(e.target.value))}
               className="flex-1 accent-blue-500"
             />
             <span className="text-xs font-semibold bg-blue-100 text-blue-700 rounded-md px-2.5 py-1 shrink-0 w-12 text-center tabular-nums">
-              P{percentile}
+              P{rawPercentile}
             </span>
           </div>
 
           <div className="flex items-center gap-4 bg-white border border-gray-100 rounded-xl px-5 py-3">
             <span className="text-xs font-medium text-gray-500 w-40 shrink-0">Repeat rate threshold</span>
             <input
-              type="range"
-              min={1}
-              max={5}
-              step={1}
-              defaultValue={2}
-              onChange={e => setRepeatThreshold(Number(e.target.value))}
+              type="range" min={1} max={5} step={1} defaultValue={2}
+              onChange={e => setRawRepeatThreshold(Number(e.target.value))}
               className="flex-1 accent-green-500"
             />
             <span className="text-xs font-semibold bg-green-100 text-green-700 rounded-md px-2.5 py-1 shrink-0 w-24 text-center tabular-nums">
@@ -128,39 +204,85 @@ export default function Page() {
           </div>
         </div>
 
-        {/* KPI strip */}
-        <div className="mb-8">
-          <KPIStrip
-            kpis={kpis}
-            dateRange={dateRange}
-            percentile={percentile}
-            repeatThreshold={repeatThreshold}
-          />
+        {/* Customer type toggle */}
+        <div className="flex gap-1 mb-8">
+          {TYPE_TABS.map(t => (
+            <button
+              key={t.id}
+              onClick={() => setCustomerType(t.id)}
+              className={`text-xs px-3 py-1.5 rounded-lg transition-colors ${
+                customerType === t.id
+                  ? 'bg-gray-900 text-white'
+                  : 'bg-white border border-gray-200 text-gray-500 hover:bg-gray-50'
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
         </div>
 
-        {/* Charts row 1 */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-          <BucketBarChart bucketStats={bucketStats} />
-          <LTVDonutChart bucketStats={bucketStats} />
-        </div>
+        {/* Charts area dims while recomputing */}
+        <div className={`transition-opacity duration-150 ${isComputing ? 'opacity-60' : 'opacity-100'}`}>
 
-        {/* Charts row 2 */}
-        <div className="mb-4">
-          <AvgMedianChart bucketStats={bucketStats} percentile={percentile} />
-        </div>
+          <SectionLabel>Booking metrics</SectionLabel>
+          <div className="mb-8">
+            <KPIBooking
+              kpis={kpis}
+              dateRange={dateRange}
+              percentile={percentile}
+              repeatThreshold={repeatThreshold}
+            />
+          </div>
 
-        {/* Scatter chart */}
-        <div className="mb-4">
-          <ScatterChart
-            filteredCustomers={filteredCustomers}
-            percentile={percentile}
-            avgLTV={kpis.avgLTV}
-            percentileLTV={kpis.percentileLTV}
-          />
-        </div>
+          <SectionLabel>Business health</SectionLabel>
+          <div className="mb-6">
+            <KPIHealth kpis={kpis} />
+          </div>
 
-        {/* Table */}
-        <BucketTable bucketStats={bucketStats} percentile={percentile} />
+          <Divider />
+
+          <SectionLabel>Booking outcomes</SectionLabel>
+          <div className="mb-6">
+            <BookingOutcomes outcomes={bookingOutcomes} />
+          </div>
+
+          <Divider />
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <BucketBarChart bucketStats={bucketStats} />
+            <LTVDonutChart bucketStats={bucketStats} />
+          </div>
+
+          <div className="mb-4">
+            <ScatterPlot
+              joinedCustomers={filteredCustomers}
+              customerType={customerType}
+              percentile={percentile}
+              rawPercentile={rawPercentile}
+            />
+          </div>
+
+          <div className="mb-4">
+            <AvgPercentileChart
+              allBucketStats={allBucketStats}
+              subBucketStats={subBucketStats}
+              nonBucketStats={nonBucketStats}
+              percentile={percentile}
+            />
+          </div>
+
+          <div className="mb-4">
+            <BucketTable
+              allBucketStats={allBucketStats}
+              subBucketStats={subBucketStats}
+              nonBucketStats={nonBucketStats}
+              percentile={percentile}
+            />
+          </div>
+
+          <HealthTable allBucketStats={allBucketStats} />
+
+        </div>
 
       </div>
     </div>
