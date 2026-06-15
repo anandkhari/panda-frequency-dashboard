@@ -307,6 +307,46 @@ In plain English, here is the journey from CSV to chart:
     without re-fetching any data
 ```
 
+Perfect. Note this down as a pending decision:
+
+---
+
+### Pending — Client Decision Required
+
+**Issue:** 728 customers exist in the payments sheet but are missing from the customers sheet. Their combined revenue of **$193,557** is currently not showing on the dashboard.
+
+**Options to present to client:**
+
+**Option A — Include them with partial data**
+```
+Show these customers in the dashboard
+They will have booking data and revenue
+But no name, email, city, or dispute info
+Label them as "Unidentified customer"
+```
+
+**Option B — Exclude them (current behavior)**
+```
+Keep dashboard as is
+Only show customers matched on both sheets
+Acknowledge the $193,557 gap
+```
+
+**Option C — Investigate why they are missing**
+```
+Could be a CSV export date range issue
+Client re-exports customers sheet with 
+a wider date range to capture all IDs
+Most complete solution
+```
+
+---
+
+Option C is likely the cleanest fix — the client probably just needs to export the customers CSV with a longer date range from Stripe to capture all historical customers.
+
+Flag this to the client and come back with their decision. What do you want to work on next in the meantime?
+
+
 ---
 
 This covers every calculation in the codebase. Want me to format this as a proper client-facing document with cleaner language?

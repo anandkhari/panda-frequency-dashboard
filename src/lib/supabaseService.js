@@ -117,3 +117,88 @@ export async function loadUploadHistory() {
 
   return data || []
 }
+
+// ─── PUBLISH SNAPSHOT ─────────────────────────────────────────────────────────
+function generateSlug() {
+  return Math.random().toString(36).substring(2, 8)
+}
+
+export async function publishSnapshot(canadaData, usData) {
+  const slug = generateSlug()
+
+  const { data, error } = await supabase
+    .from('published_snapshots')
+    .insert({
+      id: crypto.randomUUID(),
+      slug,
+      created_at: new Date().toISOString(),
+      canada_data: canadaData?.joined_customers || null,
+      us_data: usData?.joined_customers || null,
+      canada_meta: canadaData ? {
+        uploaded_at: canadaData.uploaded_at,
+        payments_count: canadaData.payments_count,
+        customers_count: canadaData.customers_count,
+        latest_payment_date: canadaData.latest_payment_date,
+        subscriber_ids: canadaData.subscriber_ids,
+      } : null,
+      us_meta: usData ? {
+        uploaded_at: usData.uploaded_at,
+        payments_count: usData.payments_count,
+        customers_count: usData.customers_count,
+        latest_payment_date: usData.latest_payment_date,
+        subscriber_ids: usData.subscriber_ids,
+      } : null,
+    })
+    .select()
+    .single()
+
+  if (error) throw new Error('Failed to publish: ' + error.message)
+
+  return { slug, data }
+}
+
+// ─── LOAD PUBLISHED SNAPSHOT ──────────────────────────────────────────────────
+export async function loadPublishedSnapshot(slug) {
+  const { data, error } = await supabase
+    .from('published_snapshots')
+    .select('*')
+    .eq('slug', slug)
+    .single()
+
+  if (error) {
+    if (error.code === 'PGRST116') return null
+    throw new Error('Failed to load snapshot: ' + error.message)
+  }
+
+  return data
+}
+
+// ─── LOAD LATEST PUBLISHED SNAPSHOT ──────────────────────────────────────────
+export async function loadLatestSnapshot() {
+  const { data, error } = await supabase
+    .from('published_snapshots')
+    .select('slug, created_at')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single()
+
+  if (error) {
+    if (error.code === 'PGRST116') return null
+    throw new Error('Failed to load latest: ' + error.message)
+  }
+
+  return data
+}
+
+// ─── LOAD PUBLISHED HISTORY ───────────────────────────────────────────────────
+export async function loadPublishedHistory() {
+  const { data, error } = await supabase
+    .from('published_snapshots')
+    .select('id, slug, created_at, label, canada_meta, us_meta')
+    .order('created_at', { ascending: false })
+    .limit(20)
+
+  if (error) throw new Error('Failed to load history: ' + error.message)
+
+  return data || []
+}

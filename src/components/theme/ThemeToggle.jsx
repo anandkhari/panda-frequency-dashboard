@@ -47,7 +47,7 @@ export default function ThemeToggle() {
       type="button"
       onClick={handleToggle}
       aria-label={`Switch to ${nextTheme} mode`}
-      className="group fixed right-4 top-4 z-50 inline-flex items-center gap-2 rounded-full border border-[var(--theme-border)] bg-[var(--theme-surface)] px-3 py-2 text-xs font-medium text-[var(--theme-foreground)] shadow-[0_18px_40px_rgba(15,23,42,0.14)] backdrop-blur transition hover:-translate-y-0.5 hover:border-[var(--theme-accent)]"
+      className="group fixed right-4 bottom-4 z-50 inline-flex items-center gap-2 rounded-full border border-[var(--theme-border)] bg-[var(--theme-surface)] px-3 py-2 text-xs font-medium text-[var(--theme-foreground)] shadow-[0_18px_40px_rgba(15,23,42,0.14)] backdrop-blur transition hover:-translate-y-0.5 hover:border-[var(--theme-accent)]"
     >
       <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--theme-accent-soft)] text-[var(--theme-accent)]">
         {theme === 'dark' ? (

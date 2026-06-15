@@ -5,7 +5,7 @@ import Papa from 'papaparse'
 import { parsePayments } from '@/lib/analytics/parsePayments'
 import { parseCustomers } from '@/lib/analytics/parseCustomers'
 import { joinPaymentsAndCustomers, prepareSavePayload } from '@/lib/analytics/join'
-import { loadAllSnapshots, saveSnapshot } from '@/lib/supabaseService'
+import { loadAllSnapshots, saveSnapshot, publishSnapshot, loadPublishedHistory } from '@/lib/supabaseService'
 
 const PAYMENT_REQUIRED = [
   'Customer ID', 'Amount', 'Amount Refunded',
@@ -40,7 +40,8 @@ function makeCountry() {
 }
 
 // Convert ISO date strings from JSON back to Date objects so filter comparisons work.
-function hydrateJoined(customers) {
+// Exported so /view/[slug] can hydrate data loaded directly from Supabase.
+export function hydrateJoined(customers) {
   if (!customers || !customers.length) return []
   return customers.map(c => ({
     ...c,
@@ -61,6 +62,12 @@ export function DashboardProvider({ children }) {
   const [isSavingToSupabase, setIsSavingToSupabase] = useState(false)
   const [savingCountry, setSavingCountry] = useState(null)
   const setSaveError = setSupabaseError
+
+  // Publish state
+  const [isPublishing, setIsPublishing] = useState(false)
+  const [publishError, setPublishError] = useState(null)
+  const [publishedSlug, setPublishedSlug] = useState(null)
+  const [publishHistory, setPublishHistory] = useState([])
 
   // Load existing snapshots from Supabase on mount
   useEffect(() => {
@@ -108,6 +115,12 @@ export function DashboardProvider({ children }) {
             latestPaymentDate: snap.latest_payment_date,
           }))
         }
+        try {
+          const history = await loadPublishedHistory()
+          setPublishHistory(history)
+        } catch {
+          // non-fatal — publish history is nice-to-have on mount
+        }
       } catch (err) {
         setSupabaseError(err.message)
       } finally {
@@ -151,6 +164,40 @@ export function DashboardProvider({ children }) {
       setSavingCountry(null)
     }
   }, [setCanada, setUs, setIsSavingToSupabase, setSavingCountry, setSaveError])
+
+  const publishDashboard = useCallback(async (label = null) => {
+    setIsPublishing(true)
+    setPublishError(null)
+
+    const canadaData = canada.isReady ? {
+      joined_customers: canada.joined,
+      subscriber_ids: canada.subscriberIds,
+      uploaded_at: canada.uploadedAt,
+      payments_count: canada.paymentsCount,
+      customers_count: canada.customersCount,
+      latest_payment_date: canada.latestPaymentDate,
+    } : null
+
+    const usData = us.isReady ? {
+      joined_customers: us.joined,
+      subscriber_ids: us.subscriberIds,
+      uploaded_at: us.uploadedAt,
+      payments_count: us.paymentsCount,
+      customers_count: us.customersCount,
+      latest_payment_date: us.latestPaymentDate,
+    } : null
+
+    try {
+      const { slug } = await publishSnapshot(canadaData, usData)
+      setPublishedSlug(slug)
+      const history = await loadPublishedHistory()
+      setPublishHistory(history)
+    } catch (err) {
+      setPublishError(err.message)
+    } finally {
+      setIsPublishing(false)
+    }
+  }, [canada, us])
 
   const uploadFile = useCallback((countryKey, type, file) => {
     const currentCountry = countryKey === 'canada' ? canada : us
@@ -239,6 +286,11 @@ export function DashboardProvider({ children }) {
       isSavingToSupabase,
       savingCountry,
       setSaveError,
+      isPublishing,
+      publishError,
+      publishedSlug,
+      publishHistory,
+      publishDashboard,
     }}>
       {children}
     </DashboardContext.Provider>
