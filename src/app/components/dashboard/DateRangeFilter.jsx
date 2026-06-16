@@ -10,6 +10,8 @@ export function getFilterLabel(dateRange) {
     return 'Last ' + dateRange + ' days'
   }
   if (dateRange?.type === 'currentYear') return 'Current year'
+  if (dateRange?.type === 'monthToDate') return 'Month to date'
+  if (dateRange?.type === 'yearToDate') return 'Year to date'
   if (dateRange?.type === 'lastYear') return 'Last year'
   if (dateRange?.type === 'year') return String(dateRange.year)
   if (dateRange?.type === 'custom') {

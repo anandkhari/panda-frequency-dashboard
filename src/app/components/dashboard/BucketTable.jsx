@@ -1,7 +1,5 @@
 'use client'
 
-import { useState } from 'react'
-
 function fmt(n) { return '$' + Math.round(n).toLocaleString() }
 
 function InlineBar({ value, max }) {
@@ -16,18 +14,8 @@ function InlineBar({ value, max }) {
   )
 }
 
-
-const TABS = [
-  { id: 'all', label: 'All' },
-  { id: 'sub', label: 'Subscribers' },
-  { id: 'non', label: 'Non-subscribers' },
-]
-
-export default function BucketTable({ allBucketStats, subBucketStats, nonBucketStats, percentile }) {
-  const [tab, setTab] = useState('all')
-
-  const statsMap = { all: allBucketStats, sub: subBucketStats, non: nonBucketStats }
-  const bucketStats = statsMap[tab] ?? allBucketStats
+export default function BucketTable({ bucketStats, percentile, customerType }) {
+  const showSubscribers = customerType === 'all'
   const maxLTV = Math.max(...bucketStats.map(b => b.totalLTV), 0)
 
   return (
@@ -35,23 +23,6 @@ export default function BucketTable({ allBucketStats, subBucketStats, nonBucketS
       <div className="text-sm font-medium text-gray-900 mb-0.5">Bucket summary table</div>
       <div className="text-xs text-gray-400 mb-4">
         LTV averages and percentiles by customer segment
-      </div>
-
-      {/* Tabs */}
-      <div className="flex gap-1 mb-4">
-        {TABS.map(t => (
-          <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            className={`text-xs px-3 py-1.5 rounded-lg transition-colors ${
-              tab === t.id
-                ? 'bg-gray-900 text-white'
-                : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
       </div>
 
       <div className="overflow-x-auto">
@@ -63,7 +34,9 @@ export default function BucketTable({ allBucketStats, subBucketStats, nonBucketS
               <th className="text-left font-medium text-gray-500 px-3 py-2 border-b border-gray-100">Total LTV</th>
               <th className="text-right font-medium text-gray-500 px-3 py-2 border-b border-gray-100">Avg LTV</th>
               <th className="text-right font-medium text-gray-500 px-3 py-2 border-b border-gray-100">P{percentile} LTV</th>
-              <th className="text-right font-medium text-gray-500 px-3 py-2 border-b border-gray-100">Subscribers</th>
+              {showSubscribers && (
+                <th className="text-right font-medium text-gray-500 px-3 py-2 border-b border-gray-100">Subscribers</th>
+              )}
             </tr>
           </thead>
           <tbody>
@@ -82,9 +55,11 @@ export default function BucketTable({ allBucketStats, subBucketStats, nonBucketS
                 <td className="px-3 py-2.5 border-b border-gray-50 text-right tabular-nums text-gray-700">
                   {fmt(b.percentileLTV)}
                 </td>
-                <td className="px-3 py-2.5 border-b border-gray-50 text-right tabular-nums text-gray-500">
-                  {b.subscriberCount.toLocaleString()}
-                </td>
+                {showSubscribers && (
+                  <td className="px-3 py-2.5 border-b border-gray-50 text-right tabular-nums text-gray-500">
+                    {b.subscriberCount.toLocaleString()}
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>

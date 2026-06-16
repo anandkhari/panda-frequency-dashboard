@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { useDashboardStore } from '@/store/dashboardStore'
-import { filterByDateRange, getAvailableYears } from '@/lib/analytics/filter'
+import { filterByDateRange } from '@/lib/analytics/filter'
 import { computeKPIs, computeBucketStats } from '@/lib/analytics/metrics'
 import { computeBookingOutcomes } from '@/lib/analytics/bookingOutcomes'
 
@@ -45,11 +45,6 @@ export function useDashboard() {
 
   const store = country === 'canada' ? canada : us
   const payments = store.payments.data
-
-  const availableYears = useMemo(() =>
-    getAvailableYears(payments),
-    [payments]
-  )
 
   // Date-range filtered customers (all types)
   const filteredCustomers = useMemo(() =>
@@ -124,8 +119,6 @@ export function useDashboard() {
     uploadedAt: store.uploadedAt,
     paymentsCount: store.paymentsCount ?? 0,
     subscriberCount: store.subscriberIds?.length ?? 0,
-    // ui state
-    availableYears,
     dateRange,
     setDateRange,
     customerType,

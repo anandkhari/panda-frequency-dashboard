@@ -3,12 +3,11 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import { loadPublishedSnapshot } from '@/lib/supabaseService'
-import { hydrateJoined } from '@/store/dashboardStore'
-import { filterByDateRange, getAvailableYears } from '@/lib/analytics/filter'
+import { filterByDateRange } from '@/lib/analytics/filter'
 import { computeKPIs, computeBucketStats } from '@/lib/analytics/metrics'
 import { computeBookingOutcomes } from '@/lib/analytics/bookingOutcomes'
-import CountryToggle from '@/components/dashboard/CountryToggle'
-import DateRangeFilter, { getFilterLabel } from '@/components/dashboard/DateRangeFilter'
+import { getFilterLabel } from '@/components/dashboard/DateRangeFilter'
+import SidePanel from '@/components/dashboard/SidePanel'
 import KPIBooking from '@/components/dashboard/KPIBooking'
 import KPIHealth from '@/components/dashboard/KPIHealth'
 import BookingOutcomes from '@/components/dashboard/BookingOutcomes'
@@ -19,12 +18,6 @@ import ScatterPlot from '@/components/dashboard/ScatterPlot'
 import BucketTable from '@/components/dashboard/BucketTable'
 import HealthTable from '@/components/dashboard/HealthTable'
 import SliderControl from '@/components/dashboard/SliderControl'
-
-const TYPE_TABS = [
-  { id: 'all', label: 'All' },
-  { id: 'sub', label: 'Subscribers' },
-  { id: 'non', label: 'Non-subscribers' },
-]
 
 function SectionLabel({ children }) {
   return (
@@ -93,8 +86,8 @@ export default function ViewSlugPage() {
           return
         }
 
-        const cJoined = hydrateJoined(snap.canada_data)
-        const uJoined = hydrateJoined(snap.us_data)
+        const cJoined = snap.canada_data || []
+        const uJoined = snap.us_data || []
 
         const cPayments = snap.canada_meta?.latest_payment_date
           ? [{ createdAt: new Date(snap.canada_meta.latest_payment_date) }]
@@ -126,10 +119,10 @@ export default function ViewSlugPage() {
   const joined   = country === 'canada' ? canadaJoined : usJoined
   const payments = country === 'canada' ? canadaPayments : usPayments
 
-  const availableYears = useMemo(() =>
-    getAvailableYears([...canadaPayments, ...usPayments]),
-    [canadaPayments, usPayments]
-  )
+  const availableYears = useMemo(() => {
+    const activeMeta = country === 'canada' ? canadaMeta : usMeta
+    return activeMeta?.availableYears || []
+  }, [country, canadaMeta, usMeta])
 
   // ── Computations ─────────────────────────────────────────────────────────────
   const filteredCustomers = useMemo(() =>
@@ -220,157 +213,150 @@ export default function ViewSlugPage() {
   const hasData = joined.length > 0
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-6xl mx-auto px-6 py-8">
+    <div className="flex min-h-screen bg-gray-50">
 
-        {/* ── Header ──────────────────────────────────────────────────────── */}
-        <div className="flex items-start justify-between flex-wrap gap-4 mb-2">
-          <div>
-            <h1 className="text-base font-medium text-gray-900">
-              Booking Frequency Dashboard
-            </h1>
-            {publishedAt && (
-              <p className="text-xs text-gray-400 mt-0.5">
-                Published {formatPublishedDate(publishedAt)}
-              </p>
-            )}
-          </div>
+      <SidePanel
+        country={country}
+        onCountryChange={setCountry}
+        customerType={customerType}
+        onSegmentChange={setCustomerType}
+        dateRange={dateRange}
+        onDateChange={setDateRange}
+        availableYears={availableYears}
+      />
 
-          <div className="flex items-center gap-3">
-            <div className={`flex items-center gap-1.5 transition-opacity duration-150 ${isComputing ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-              <div className="w-3 h-3 border border-blue-400 border-t-transparent rounded-full animate-spin" />
-              <span className="text-xs text-gray-400">Updating...</span>
+      <div className="flex-1 md:ml-60 overflow-y-auto">
+        <div className="max-w-6xl mx-auto px-6 py-8">
+
+          {/* ── Header ──────────────────────────────────────────────────────── */}
+          <div className="flex items-start justify-between flex-wrap gap-4 mb-2">
+            <div>
+              <h1 className="text-base font-medium text-gray-900">
+                Booking Frequency Dashboard
+              </h1>
+              {publishedAt && (
+                <p className="text-xs text-gray-400 mt-0.5">
+                  Published {formatPublishedDate(publishedAt)}
+                </p>
+              )}
             </div>
 
-            <DateRangeFilter
-              dateRange={dateRange}
-              onChange={setDateRange}
-              availableYears={availableYears}
-            />
-
-            <CountryToggle country={country} onChange={setCountry} />
+            <div className="flex items-center gap-3">
+              <div className={`flex items-center gap-1.5 transition-opacity duration-150 ${isComputing ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+                <div className="w-3 h-3 border border-blue-400 border-t-transparent rounded-full animate-spin" />
+                <span className="text-xs text-gray-400">Updating...</span>
+              </div>
+            </div>
           </div>
+
+          {hasData && (
+            <p className="text-xs text-gray-400 mb-8">
+              {kpis.totalCustomers.toLocaleString()} customers
+              {` · ${getFilterLabel(dateRange)}`}
+            </p>
+          )}
+
+          {/* ── Empty state for selected country ────────────────────────────── */}
+          {!hasData ? (
+            <div className="flex items-center justify-center py-24">
+              <p className="text-sm text-gray-400">No data for {country === 'canada' ? 'Canada' : 'United States'}.</p>
+            </div>
+          ) : (
+            <>
+              {/* Sliders */}
+              <div className="flex flex-col gap-2 mb-8">
+                <SliderControl
+                  label="Percentile metric"
+                  min={1} max={99} step={1}
+                  value={rawPercentile}
+                  onChange={setRawPercentile}
+                  color="blue"
+                  badge={
+                    <span className="text-xs font-semibold bg-blue-100 text-blue-700 rounded-md px-2.5 py-1 shrink-0 w-12 text-center tabular-nums">
+                      P{rawPercentile}
+                    </span>
+                  }
+                />
+                <SliderControl
+                  label="Repeat rate threshold"
+                  min={1} max={5} step={1}
+                  value={rawRepeatThreshold}
+                  onChange={setRawRepeatThreshold}
+                  color="green"
+                  badge={
+                    <span className="text-xs font-semibold bg-green-100 text-green-700 rounded-md px-2.5 py-1 shrink-0 w-24 text-center tabular-nums">
+                      {repeatBadge}
+                    </span>
+                  }
+                />
+              </div>
+
+              {/* Charts area */}
+              <div className={`transition-opacity duration-150 ${isComputing ? 'opacity-60' : 'opacity-100'}`}>
+
+                <SectionLabel>Booking metrics</SectionLabel>
+                <div className="mb-8">
+                  <KPIBooking kpis={kpis} dateRange={dateRange} percentile={percentile} repeatThreshold={repeatThreshold} />
+                </div>
+
+                <SectionLabel>Business health</SectionLabel>
+                <div className="mb-6">
+                  <KPIHealth kpis={kpis} />
+                </div>
+
+                <Divider />
+
+                <SectionLabel>Booking outcomes</SectionLabel>
+                <div className="mb-6">
+                  <BookingOutcomes outcomes={bookingOutcomes} />
+                </div>
+
+                <Divider />
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <BucketBarChart bucketStats={bucketStats} />
+                  <LTVDonutChart bucketStats={bucketStats} />
+                </div>
+
+                <div className="mb-4">
+                  <ScatterPlot
+                    joinedCustomers={filteredCustomers}
+                    customerType={customerType}
+                    percentile={percentile}
+                    rawPercentile={rawPercentile}
+                  />
+                </div>
+
+                <div className="mb-4">
+                  <AvgPercentileChart
+                    allBucketStats={allBucketStats}
+                    subBucketStats={subBucketStats}
+                    nonBucketStats={nonBucketStats}
+                    percentile={percentile}
+                  />
+                </div>
+
+                <div className="mb-4">
+                  <BucketTable
+                    bucketStats={
+                      customerType === 'sub'
+                        ? subBucketStats
+                        : customerType === 'non'
+                          ? nonBucketStats
+                          : allBucketStats
+                    }
+                    percentile={percentile}
+                    customerType={customerType}
+                  />
+                </div>
+
+                <HealthTable allBucketStats={allBucketStats} />
+
+              </div>
+            </>
+          )}
+
         </div>
-
-        {hasData && (
-          <p className="text-xs text-gray-400 mb-8">
-            {kpis.totalCustomers.toLocaleString()} customers
-            {` · ${getFilterLabel(dateRange)}`}
-          </p>
-        )}
-
-        {/* ── Empty state for selected country ────────────────────────────── */}
-        {!hasData ? (
-          <div className="flex items-center justify-center py-24">
-            <p className="text-sm text-gray-400">No data for {country === 'canada' ? 'Canada' : 'United States'}.</p>
-          </div>
-        ) : (
-          <>
-            {/* Sliders */}
-            <div className="flex flex-col gap-2 mb-8">
-              <SliderControl
-                label="Percentile metric"
-                min={1} max={99} step={1}
-                value={rawPercentile}
-                onChange={setRawPercentile}
-                color="blue"
-                badge={
-                  <span className="text-xs font-semibold bg-blue-100 text-blue-700 rounded-md px-2.5 py-1 shrink-0 w-12 text-center tabular-nums">
-                    P{rawPercentile}
-                  </span>
-                }
-              />
-              <SliderControl
-                label="Repeat rate threshold"
-                min={1} max={5} step={1}
-                value={rawRepeatThreshold}
-                onChange={setRawRepeatThreshold}
-                color="green"
-                badge={
-                  <span className="text-xs font-semibold bg-green-100 text-green-700 rounded-md px-2.5 py-1 shrink-0 w-24 text-center tabular-nums">
-                    {repeatBadge}
-                  </span>
-                }
-              />
-            </div>
-
-            {/* Customer type toggle */}
-            <div className="flex gap-1 mb-8">
-              {TYPE_TABS.map(t => (
-                <button
-                  key={t.id}
-                  onClick={() => setCustomerType(t.id)}
-                  className={`text-xs px-3 py-1.5 rounded-lg transition-colors ${
-                    customerType === t.id
-                      ? 'bg-gray-900 text-white'
-                      : 'bg-white border border-gray-200 text-gray-500 hover:bg-gray-50'
-                  }`}
-                >
-                  {t.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Charts area */}
-            <div className={`transition-opacity duration-150 ${isComputing ? 'opacity-60' : 'opacity-100'}`}>
-
-              <SectionLabel>Booking metrics</SectionLabel>
-              <div className="mb-8">
-                <KPIBooking kpis={kpis} dateRange={dateRange} percentile={percentile} repeatThreshold={repeatThreshold} />
-              </div>
-
-              <SectionLabel>Business health</SectionLabel>
-              <div className="mb-6">
-                <KPIHealth kpis={kpis} />
-              </div>
-
-              <Divider />
-
-              <SectionLabel>Booking outcomes</SectionLabel>
-              <div className="mb-6">
-                <BookingOutcomes outcomes={bookingOutcomes} />
-              </div>
-
-              <Divider />
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <BucketBarChart bucketStats={bucketStats} />
-                <LTVDonutChart bucketStats={bucketStats} />
-              </div>
-
-              <div className="mb-4">
-                <ScatterPlot
-                  joinedCustomers={filteredCustomers}
-                  customerType={customerType}
-                  percentile={percentile}
-                  rawPercentile={rawPercentile}
-                />
-              </div>
-
-              <div className="mb-4">
-                <AvgPercentileChart
-                  allBucketStats={allBucketStats}
-                  subBucketStats={subBucketStats}
-                  nonBucketStats={nonBucketStats}
-                  percentile={percentile}
-                />
-              </div>
-
-              <div className="mb-4">
-                <BucketTable
-                  allBucketStats={allBucketStats}
-                  subBucketStats={subBucketStats}
-                  nonBucketStats={nonBucketStats}
-                  percentile={percentile}
-                />
-              </div>
-
-              <HealthTable allBucketStats={allBucketStats} />
-
-            </div>
-          </>
-        )}
-
       </div>
     </div>
   )

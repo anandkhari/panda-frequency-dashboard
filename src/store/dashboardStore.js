@@ -77,7 +77,7 @@ export function DashboardProvider({ children }) {
 
         if (snapshots.canada) {
           const snap = snapshots.canada
-          const joined = hydrateJoined(snap.joined_customers)
+          const joined = snap.joined_customers || []
           // Synthetic payments array so filterByDateRange can anchor the date window
           const syntheticPayments = snap.latest_payment_date
             ? [{ createdAt: new Date(snap.latest_payment_date) }]
@@ -98,7 +98,7 @@ export function DashboardProvider({ children }) {
 
         if (snapshots.us) {
           const snap = snapshots.us
-          const joined = hydrateJoined(snap.joined_customers)
+          const joined = snap.joined_customers || []
           const syntheticPayments = snap.latest_payment_date
             ? [{ createdAt: new Date(snap.latest_payment_date) }]
             : []

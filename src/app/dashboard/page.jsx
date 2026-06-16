@@ -5,8 +5,8 @@ import { useRouter } from 'next/navigation'
 import { useDashboard } from '@/hooks/useDashboard'
 import { useDashboardStore } from '@/store/dashboardStore'
 import { copyToClipboard } from '@/lib/copyToClipboard'
-import CountryToggle from '@/components/dashboard/CountryToggle'
-import DateRangeFilter, { getFilterLabel } from '@/components/dashboard/DateRangeFilter'
+import { getFilterLabel } from '@/components/dashboard/DateRangeFilter'
+import SidePanel from '@/components/dashboard/SidePanel'
 import KPIBooking from '@/components/dashboard/KPIBooking'
 import KPIHealth from '@/components/dashboard/KPIHealth'
 import BookingOutcomes from '@/components/dashboard/BookingOutcomes'
@@ -29,12 +29,6 @@ function SectionLabel({ children }) {
 function Divider() {
   return <hr className="border-gray-100 my-6" />
 }
-
-const TYPE_TABS = [
-  { id: 'all', label: 'All' },
-  { id: 'sub', label: 'Subscribers' },
-  { id: 'non', label: 'Non-subscribers' },
-]
 
 function relativeTime(isoString) {
   if (!isoString) return null
@@ -121,212 +115,204 @@ export default function DashboardPage() {
   const updatedLabel = relativeTime(uploadedAt)
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-gray-50">
 
-      {/* Amber banner */}
-      <div className="bg-amber-50 border-b border-amber-200 px-6 py-2 text-xs text-amber-700 flex items-center justify-between">
-        <span>This is your private preview. Your team cannot see this yet.</span>
-        <div className="flex items-center gap-2">
-          {isPublishing ? (
-            <span className="flex items-center gap-1.5">
-              <span className="w-3 h-3 border border-amber-500 border-t-transparent rounded-full animate-spin inline-block" />
-              Publishing...
-            </span>
-          ) : publishedSlug ? (
-            <>
-              <span>✓ Published</span>
+      <SidePanel
+        country={country}
+        onCountryChange={setCountry}
+        customerType={customerType}
+        onSegmentChange={setCustomerType}
+        dateRange={dateRange}
+        onDateChange={setDateRange}
+        availableYears={availableYears}
+      />
+
+      <div className="flex-1 md:ml-60 overflow-y-auto">
+
+        {/* Amber banner */}
+        <div className="bg-amber-50 border-b border-amber-200 px-6 py-2 text-xs text-amber-700 flex items-center justify-between">
+          <span>This is your private preview. Your team cannot see this yet.</span>
+          <div className="flex items-center gap-2">
+            {isPublishing ? (
+              <span className="flex items-center gap-1.5">
+                <span className="w-3 h-3 border border-amber-500 border-t-transparent rounded-full animate-spin inline-block" />
+                Publishing...
+              </span>
+            ) : publishedSlug ? (
+              <>
+                <span>✓ Published</span>
+                <button
+                  onClick={handleCopy}
+                  className="px-3 py-1 rounded-md bg-amber-700 text-amber-50 hover:bg-amber-800 transition-colors"
+                >
+                  {copied ? 'Copied!' : 'Copy Link'}
+                </button>
+              </>
+            ) : (
               <button
-                onClick={handleCopy}
-                className="px-3 py-1 rounded-md bg-amber-700 text-amber-50 hover:bg-amber-800 transition-colors"
+                onClick={handlePublish}
+                className="px-3 py-1 rounded-md bg-amber-700 text-amber-50 hover:bg-amber-800 transition-colors font-medium"
               >
-                {copied ? 'Copied!' : 'Copy Link'}
+                Publish & Get Link →
               </button>
-            </>
-          ) : (
-            <button
-              onClick={handlePublish}
-              className="px-3 py-1 rounded-md bg-amber-700 text-amber-50 hover:bg-amber-800 transition-colors font-medium"
-            >
-              Publish & Get Link →
-            </button>
-          )}
+            )}
+          </div>
         </div>
-      </div>
 
-      <div className="max-w-6xl mx-auto px-6 py-8">
+        <div className="max-w-6xl mx-auto px-6 py-8">
 
-        {/* Supabase error banner */}
-        {supabaseError && (
-          <div className="flex items-start justify-between gap-4 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-6">
-            <p className="text-xs text-amber-700">
-              Could not connect to database. Showing locally loaded data.
-            </p>
-            <button
-              onClick={() => setSupabaseError(null)}
-              className="text-xs text-amber-600 hover:text-amber-800 shrink-0 underline"
-            >
-              Dismiss
-            </button>
-          </div>
-        )}
+          {/* Supabase error banner */}
+          {supabaseError && (
+            <div className="flex items-start justify-between gap-4 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-6">
+              <p className="text-xs text-amber-700">
+                Could not connect to database. Showing locally loaded data.
+              </p>
+              <button
+                onClick={() => setSupabaseError(null)}
+                className="text-xs text-amber-600 hover:text-amber-800 shrink-0 underline"
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
 
-        {/* Top bar */}
-        <div className="flex items-start justify-between flex-wrap gap-4 mb-2">
-          <div>
-            <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">
-              Booking frequency dashboard
-            </h1>
-            <p className="text-sm text-gray-400 mt-1">
-              Panda Hub · customer cohort analysis
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <div className={`flex items-center gap-1.5 transition-opacity duration-150 ${isComputing ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-              <div className="w-3 h-3 border border-blue-400 border-t-transparent rounded-full animate-spin" />
-              <span className="text-xs text-gray-400">Updating...</span>
+          {/* Top bar */}
+          <div className="flex items-start justify-between flex-wrap gap-4 mb-2">
+            <div>
+              <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">
+                Booking frequency dashboard
+              </h1>
+              <p className="text-sm text-gray-400 mt-1">
+                Panda Hub · customer cohort analysis
+              </p>
             </div>
 
-            <DateRangeFilter
-              dateRange={dateRange}
-              onChange={setDateRange}
-              availableYears={availableYears}
-            />
+            <div className="flex items-center gap-3">
+              <div className={`flex items-center gap-1.5 transition-opacity duration-150 ${isComputing ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+                <div className="w-3 h-3 border border-blue-400 border-t-transparent rounded-full animate-spin" />
+                <span className="text-xs text-gray-400">Updating...</span>
+              </div>
 
-            <div className="flex items-center gap-2">
-              <CountryToggle country={country} onChange={setCountry} />
               {updatedLabel && (
                 <span className="text-xs text-gray-400 whitespace-nowrap">
                   Updated {updatedLabel}
                 </span>
               )}
+
+              <button
+                onClick={() => router.push('/admin')}
+                className="text-xs border border-gray-200 rounded-lg px-3 py-1.5 bg-white text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Upload new
+              </button>
+            </div>
+          </div>
+
+          {/* Data summary line */}
+          <p className="text-xs text-gray-400 mb-8">
+            {kpis.totalCustomers.toLocaleString()} customers
+            {paymentsCount > 0 ? ` · ${paymentsCount.toLocaleString()} payments` : ''}
+            {subscriberCount > 0 ? ` · ${subscriberCount.toLocaleString()} subscribers` : ''}
+            {` · ${getFilterLabel(dateRange)}`}
+          </p>
+
+          {/* Sliders */}
+          <div className="flex flex-col gap-2 mb-8">
+            <SliderControl
+              label="Percentile metric"
+              min={1} max={99} step={1}
+              value={rawPercentile}
+              onChange={setRawPercentile}
+              color="blue"
+              badge={
+                <span className="text-xs font-semibold bg-blue-100 text-blue-700 rounded-md px-2.5 py-1 shrink-0 w-12 text-center tabular-nums">
+                  P{rawPercentile}
+                </span>
+              }
+            />
+            <SliderControl
+              label="Repeat rate threshold"
+              min={1} max={5} step={1}
+              value={rawRepeatThreshold}
+              onChange={setRawRepeatThreshold}
+              color="green"
+              badge={
+                <span className="text-xs font-semibold bg-green-100 text-green-700 rounded-md px-2.5 py-1 shrink-0 w-24 text-center tabular-nums">
+                  {repeatBadge}
+                </span>
+              }
+            />
+          </div>
+
+          {/* Charts area dims while recomputing */}
+          <div className={`transition-opacity duration-150 ${isComputing ? 'opacity-60' : 'opacity-100'}`}>
+
+            <SectionLabel>Booking metrics</SectionLabel>
+            <div className="mb-8">
+              <KPIBooking
+                kpis={kpis}
+                dateRange={dateRange}
+                percentile={percentile}
+                repeatThreshold={repeatThreshold}
+              />
             </div>
 
-            <button
-              onClick={() => router.push('/admin')}
-              className="text-xs border border-gray-200 rounded-lg px-3 py-1.5 bg-white text-gray-700 hover:bg-gray-50 transition-colors"
-            >
-              Upload new
-            </button>
+            <SectionLabel>Business health</SectionLabel>
+            <div className="mb-6">
+              <KPIHealth kpis={kpis} />
+            </div>
+
+            <Divider />
+
+            <SectionLabel>Booking outcomes</SectionLabel>
+            <div className="mb-6">
+              <BookingOutcomes outcomes={bookingOutcomes} />
+            </div>
+
+            <Divider />
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <BucketBarChart bucketStats={bucketStats} />
+              <LTVDonutChart bucketStats={bucketStats} />
+            </div>
+
+            <div className="mb-4">
+              <ScatterPlot
+                joinedCustomers={filteredCustomers}
+                customerType={customerType}
+                percentile={percentile}
+                rawPercentile={rawPercentile}
+              />
+            </div>
+
+            <div className="mb-4">
+              <AvgPercentileChart
+                allBucketStats={allBucketStats}
+                subBucketStats={subBucketStats}
+                nonBucketStats={nonBucketStats}
+                percentile={percentile}
+              />
+            </div>
+
+            <div className="mb-4">
+              <BucketTable
+                bucketStats={
+                  customerType === 'sub'
+                    ? subBucketStats
+                    : customerType === 'non'
+                      ? nonBucketStats
+                      : allBucketStats
+                }
+                percentile={percentile}
+                customerType={customerType}
+              />
+            </div>
+
+            <HealthTable allBucketStats={allBucketStats} />
+
           </div>
-        </div>
-
-        {/* Data summary line */}
-        <p className="text-xs text-gray-400 mb-8">
-          {kpis.totalCustomers.toLocaleString()} customers
-          {paymentsCount > 0 ? ` · ${paymentsCount.toLocaleString()} payments` : ''}
-          {subscriberCount > 0 ? ` · ${subscriberCount.toLocaleString()} subscribers` : ''}
-          {` · ${getFilterLabel(dateRange)}`}
-        </p>
-
-        {/* Sliders */}
-        <div className="flex flex-col gap-2 mb-8">
-          <SliderControl
-            label="Percentile metric"
-            min={1} max={99} step={1}
-            value={rawPercentile}
-            onChange={setRawPercentile}
-            color="blue"
-            badge={
-              <span className="text-xs font-semibold bg-blue-100 text-blue-700 rounded-md px-2.5 py-1 shrink-0 w-12 text-center tabular-nums">
-                P{rawPercentile}
-              </span>
-            }
-          />
-          <SliderControl
-            label="Repeat rate threshold"
-            min={1} max={5} step={1}
-            value={rawRepeatThreshold}
-            onChange={setRawRepeatThreshold}
-            color="green"
-            badge={
-              <span className="text-xs font-semibold bg-green-100 text-green-700 rounded-md px-2.5 py-1 shrink-0 w-24 text-center tabular-nums">
-                {repeatBadge}
-              </span>
-            }
-          />
-        </div>
-
-        {/* Customer type toggle */}
-        <div className="flex gap-1 mb-8">
-          {TYPE_TABS.map(t => (
-            <button
-              key={t.id}
-              onClick={() => setCustomerType(t.id)}
-              className={`text-xs px-3 py-1.5 rounded-lg transition-colors ${
-                customerType === t.id
-                  ? 'bg-gray-900 text-white'
-                  : 'bg-white border border-gray-200 text-gray-500 hover:bg-gray-50'
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Charts area dims while recomputing */}
-        <div className={`transition-opacity duration-150 ${isComputing ? 'opacity-60' : 'opacity-100'}`}>
-
-          <SectionLabel>Booking metrics</SectionLabel>
-          <div className="mb-8">
-            <KPIBooking
-              kpis={kpis}
-              dateRange={dateRange}
-              percentile={percentile}
-              repeatThreshold={repeatThreshold}
-            />
-          </div>
-
-          <SectionLabel>Business health</SectionLabel>
-          <div className="mb-6">
-            <KPIHealth kpis={kpis} />
-          </div>
-
-          <Divider />
-
-          <SectionLabel>Booking outcomes</SectionLabel>
-          <div className="mb-6">
-            <BookingOutcomes outcomes={bookingOutcomes} />
-          </div>
-
-          <Divider />
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <BucketBarChart bucketStats={bucketStats} />
-            <LTVDonutChart bucketStats={bucketStats} />
-          </div>
-
-          <div className="mb-4">
-            <ScatterPlot
-              joinedCustomers={filteredCustomers}
-              customerType={customerType}
-              percentile={percentile}
-              rawPercentile={rawPercentile}
-            />
-          </div>
-
-          <div className="mb-4">
-            <AvgPercentileChart
-              allBucketStats={allBucketStats}
-              subBucketStats={subBucketStats}
-              nonBucketStats={nonBucketStats}
-              percentile={percentile}
-            />
-          </div>
-
-          <div className="mb-4">
-            <BucketTable
-              allBucketStats={allBucketStats}
-              subBucketStats={subBucketStats}
-              nonBucketStats={nonBucketStats}
-              percentile={percentile}
-            />
-          </div>
-
-          <HealthTable allBucketStats={allBucketStats} />
 
         </div>
-
       </div>
     </div>
   )

@@ -5,8 +5,8 @@ import { useRouter } from 'next/navigation'
 import { useDashboard } from '@/hooks/useDashboard'
 import { useDashboardStore } from '@/store/dashboardStore'
 import { copyToClipboard } from '@/lib/copyToClipboard'
-import CountryToggle from '@/components/dashboard/CountryToggle'
-import DateRangeFilter, { getFilterLabel } from '@/components/dashboard/DateRangeFilter'
+import { getFilterLabel } from '@/components/dashboard/DateRangeFilter'
+import SidePanel from '@/components/dashboard/SidePanel'
 import KPIBooking from '@/components/dashboard/KPIBooking'
 import KPIHealth from '@/components/dashboard/KPIHealth'
 import BookingOutcomes from '@/components/dashboard/BookingOutcomes'
@@ -82,7 +82,16 @@ export default function AdminPreviewPage() {
   const repeatBadge = rawRepeatThreshold === 1 ? '1+ booking' : `${rawRepeatThreshold}+ bookings`
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-gray-50">
+      <SidePanel
+        country={country}
+        onCountryChange={setCountry}
+        customerType={customerType}
+        onSegmentChange={setCustomerType}
+        dateRange={dateRange}
+        onDateChange={setDateRange}
+        availableYears={availableYears}
+      />
 
       {/* ── Sticky header ──────────────────────────────────────────────────── */}
       <div className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 h-12 px-6 flex items-center justify-between">
@@ -158,7 +167,7 @@ export default function AdminPreviewPage() {
       )}
 
       {/* ── Dashboard content ──────────────────────────────────────────────── */}
-      <div style={{ paddingTop: 56 }}>
+      <div className="flex-1 md:ml-64 overflow-y-auto" style={{ paddingTop: 56 }}>
         {isLoadingFromSupabase ? (
           <div className="flex items-center justify-center min-h-screen">
             <div className="flex flex-col items-center gap-3">
@@ -193,13 +202,6 @@ export default function AdminPreviewPage() {
                   <span className="text-xs text-gray-400">Updating...</span>
                 </div>
 
-                <DateRangeFilter
-                  dateRange={dateRange}
-                  onChange={setDateRange}
-                  availableYears={availableYears}
-                />
-
-                <CountryToggle country={country} onChange={setCountry} />
               </div>
             </div>
 
@@ -237,6 +239,7 @@ export default function AdminPreviewPage() {
             </div>
 
             {/* Customer type toggle */}
+            {/*
             <div className="flex gap-1 mb-8">
               {TYPE_TABS.map(t => (
                 <button
@@ -252,6 +255,7 @@ export default function AdminPreviewPage() {
                 </button>
               ))}
             </div>
+            */}
 
             {/* Charts area */}
             <div className={`transition-opacity duration-150 ${isComputing ? 'opacity-60' : 'opacity-100'}`}>
@@ -300,10 +304,15 @@ export default function AdminPreviewPage() {
 
               <div className="mb-4">
                 <BucketTable
-                  allBucketStats={allBucketStats}
-                  subBucketStats={subBucketStats}
-                  nonBucketStats={nonBucketStats}
+                  bucketStats={
+                    customerType === 'sub'
+                      ? subBucketStats
+                      : customerType === 'non'
+                        ? nonBucketStats
+                        : allBucketStats
+                  }
                   percentile={percentile}
+                  customerType={customerType}
                 />
               </div>
 

@@ -13,8 +13,6 @@ import {
 } from 'recharts'
 import { BUCKETS } from '@/lib/analytics/constants'
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-
 const TOTAL_DOT_LIMIT = 800
 
 const BUCKET_INDEX = {
@@ -33,10 +31,10 @@ const X_LABELS = {
   5: '5+ bookings',
 }
 
-// ─── Pure helpers ─────────────────────────────────────────────────────────────
-
 function getBucketIndex(bucket) {
-  return BUCKET_INDEX[bucket] ?? 0
+  if (bucket == null) return -1
+  const idx = BUCKET_INDEX[bucket]
+  return idx !== undefined ? idx : -1
 }
 
 function jitter(seed, offset) {
@@ -45,7 +43,6 @@ function jitter(seed, offset) {
   return (frac - 0.5) * 0.28
 }
 
-// FIX D — stable seed from customer ID
 function stableIndex(id) {
   let h = 0
   const s = String(id)
@@ -65,10 +62,10 @@ function computePercentile(arr, p) {
     : sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo)
 }
 
-// FIX A — filter null-bucket customers before sampling
 function sampleCustomers(customers) {
+  // Only keep customers with valid known buckets
   const bucketable = customers.filter(
-    c => c.bucket !== null && c.bucket !== undefined
+    c => c.bucket != null && BUCKET_INDEX[c.bucket] !== undefined
   )
   const subs    = bucketable.filter(c =>  c.isSubscriber)
   const nonSubs = bucketable.filter(c => !c.isSubscriber)
@@ -81,22 +78,29 @@ function sampleCustomers(customers) {
   return [...subs, ...sampledNonSubs]
 }
 
-// FIX C + D — bookingCount on dot, stable jitter seed
-function buildDots(customers, segment) {
-  return customers.map((c) => {
+// Single combined dots array — fixes tooltip ambiguity
+function buildAllDots(customers) {
+  const dots = []
+  customers.forEach((c) => {
     const bi = getBucketIndex(c.bucket)
+    if (bi < 0) return
+    const yPos = c.net ?? c.netVolume ?? 0
+    if (yPos <= 0) return
     const seed = stableIndex(c.id)
-    return {
+    dots.push({
       x: bi + 1 + jitter(seed, bi * 1000),
-      y: c.net ?? c.netVolume ?? 0,
+      y: yPos,
+      bucketIndex: bi,
       name: c.name || 'Unidentified Customer',
       bucket: c.bucket,
-      segment,
-      bookingCount: c.bookingCount ?? c.paymentCount ?? null,
+      // Store segment as string for tooltip display
+      segment: c.isSubscriber ? 'Subscriber' : 'Non-subscriber',
       isSubscriber: c.isSubscriber,
+      bookingCount: c.bookingCount ?? c.paymentCount ?? null,
       isUnidentified: c.isUnidentified ?? false,
-    }
+    })
   })
+  return dots
 }
 
 function buildReferenceLines(customers, percentile) {
@@ -107,6 +111,7 @@ function buildReferenceLines(customers, percentile) {
     const ltvs = customers
       .filter(c => c.bucket === bucket)
       .map(c => c.net ?? c.netVolume ?? 0)
+      .filter(v => v > 0)
 
     const avgVal = ltvs.length
       ? ltvs.reduce((a, b) => a + b, 0) / ltvs.length
@@ -128,51 +133,54 @@ function buildReferenceLines(customers, percentile) {
   return { avgLineData, percentileLineData }
 }
 
-// ─── Custom shapes ────────────────────────────────────────────────────────────
+// Single custom shape that draws circle or triangle
+// based on isSubscriber field on each dot
+function CustomDot(props) {
+  const { cx, cy, payload } = props
+  if (cx == null || cy == null || !payload) return null
 
-function CircleDot(props) {
-  const { cx, cy } = props
-  if (cx == null || cy == null) return null
-  return (
-    <circle
-      cx={cx} cy={cy} r={3.5}
-      fill="rgba(24,95,165,0.35)"
-      stroke="rgba(24,95,165,0.6)"
-      strokeWidth={0.5}
-    />
-  )
-}
+  if (payload.isSubscriber) {
+    // Blue circle for subscribers
+    return (
+      <circle
+        cx={cx}
+        cy={cy}
+        r={3.5}
+        fill="rgba(24,95,165,0.45)"
+        stroke="rgba(24,95,165,0.7)"
+        strokeWidth={0.5}
+      />
+    )
+  }
 
-function TriangleDot(props) {
-  const { cx, cy } = props
-  if (cx == null || cy == null) return null
-  const s = 7
+  // Green triangle for non-subscribers
+  const s = 6
   const pts = [
     `${cx},${cy - s}`,
     `${cx - s},${cy + s}`,
-    `${cx + s},${cy + s}`
+    `${cx + s},${cy + s}`,
   ].join(' ')
   return (
     <polygon
       points={pts}
-      fill="rgba(99,153,34,0.35)"
-      stroke="rgba(99,153,34,0.6)"
+      fill="rgba(99,153,34,0.45)"
+      stroke="rgba(99,153,34,0.7)"
       strokeWidth={0.5}
     />
   )
 }
 
-// FIX B — tooltip picks correct dot, shows bookingCount
+// Tooltip now receives exactly one payload item
+// because there is only one Scatter series
 function CustomTooltip({ active, payload }) {
   if (!active || !payload?.length) return null
 
-  const scatterPoints = payload.filter(
-    p => p.payload?.segment !== undefined
-  )
-  if (!scatterPoints.length) return null
+  // Find the scatter dot payload
+  // (exclude line reference points which have no segment)
+  const point = payload.find(p => p.payload?.segment !== undefined)
+  if (!point) return null
 
-  const d = scatterPoints[0].payload
-  if (!d) return null
+  const d = point.payload
 
   const bookingLabel = d.bookingCount != null
     ? `${d.bookingCount} booking${d.bookingCount === 1 ? '' : 's'}`
@@ -183,7 +191,8 @@ function CustomTooltip({ active, payload }) {
       <p className="text-xs font-medium text-gray-900">
         {d.name}
       </p>
-      <p className="text-xs text-gray-500 mt-0.5">
+      <p className="text-xs mt-0.5"
+        style={{ color: d.isSubscriber ? '#185FA5' : '#639922' }}>
         {d.segment}
       </p>
       <p className="text-xs text-gray-700 mt-0.5">
@@ -196,8 +205,6 @@ function CustomTooltip({ active, payload }) {
   )
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
-
 export default function ScatterPlot({
   joinedCustomers,
   customerType,
@@ -209,37 +216,31 @@ export default function ScatterPlot({
     [joinedCustomers],
   )
 
-  const { subDots, nonSubDots } = useMemo(() => ({
-    subDots:    buildDots(
-      sampledCustomers.filter(c =>  c.isSubscriber),
-      'Subscriber'
-    ),
-    nonSubDots: buildDots(
-      sampledCustomers.filter(c => !c.isSubscriber),
-      'Non-subscriber'
-    ),
-  }), [sampledCustomers])
+  // Single combined dots array
+  const allDots = useMemo(() => {
+    let customers = sampledCustomers
+    if (customerType === 'sub')
+      customers = sampledCustomers.filter(c => c.isSubscriber)
+    else if (customerType === 'non')
+      customers = sampledCustomers.filter(c => !c.isSubscriber)
+    return buildAllDots(customers)
+  }, [sampledCustomers, customerType])
 
-  // FIX E — reference lines match visible dots
   const { avgLineData, percentileLineData } = useMemo(() => {
     let ref = joinedCustomers.filter(
-      c => c.bucket !== null && c.bucket !== undefined
+      c => c.bucket != null && BUCKET_INDEX[c.bucket] !== undefined
     )
     if (customerType === 'sub')
       ref = ref.filter(c => c.isSubscriber)
     else if (customerType === 'non')
       ref = ref.filter(c => !c.isSubscriber)
-
     return buildReferenceLines(ref, percentile)
   }, [joinedCustomers, percentile, customerType])
 
   const maxY = useMemo(() => {
-    const allY = [
-      ...subDots.map(d => d.y),
-      ...nonSubDots.map(d => d.y)
-    ]
+    const allY = allDots.map(d => d.y)
     return allY.length ? Math.round(Math.max(...allY) * 1.08) : 1000
-  }, [subDots, nonSubDots])
+  }, [allDots])
 
   if (!joinedCustomers.length) {
     return (
@@ -257,11 +258,11 @@ export default function ScatterPlot({
         Individual customer LTV — all buckets
       </div>
       <div className="text-xs text-gray-400 mb-4">
-        Each dot = one customer · x-axis jittered within bucket · 
+        Each dot = one customer · x-axis jittered within bucket ·
         color = segment · lines = avg &amp; P{rawPercentile}
       </div>
 
-      {/* ── Legend ── */}
+      {/* Legend */}
       <div className="flex flex-wrap gap-3 mb-3 text-xs text-gray-500">
         {(customerType === 'all' || customerType === 'sub') && (
           <span className="flex items-center gap-1.5">
@@ -296,7 +297,6 @@ export default function ScatterPlot({
         </span>
       </div>
 
-      {/* ── Chart ── */}
       <ResponsiveContainer width="100%" height={300}>
         <ComposedChart margin={{ top: 10, right: 10, bottom: 20, left: 10 }}>
           <CartesianGrid
@@ -304,7 +304,6 @@ export default function ScatterPlot({
             stroke="rgba(128,128,128,0.07)"
             vertical={false}
           />
-
           <XAxis
             type="number"
             dataKey="x"
@@ -322,7 +321,6 @@ export default function ScatterPlot({
               fill: '#9ca3af',
             }}
           />
-
           <YAxis
             type="number"
             dataKey="y"
@@ -340,15 +338,16 @@ export default function ScatterPlot({
             }}
           />
 
-          <Tooltip content={<CustomTooltip />} cursor={false} />
+          <Tooltip
+            content={<CustomTooltip />}
+            cursor={false}
+          />
 
-          {(customerType === 'all' || customerType === 'sub') && (
-            <Scatter data={subDots} shape={<CircleDot />} />
-          )}
-
-          {(customerType === 'all' || customerType === 'non') && (
-            <Scatter data={nonSubDots} shape={<TriangleDot />} />
-          )}
+          {/* Single scatter series — shape function handles circle vs triangle */}
+          <Scatter
+            data={allDots}
+            shape={<CustomDot />}
+          />
 
           <Line
             data={avgLineData}
@@ -361,6 +360,7 @@ export default function ScatterPlot({
             legendType="none"
             connectNulls={false}
             isAnimationActive={false}
+            style={{ pointerEvents: 'none' }}
           />
 
           <Line
@@ -375,6 +375,7 @@ export default function ScatterPlot({
             legendType="none"
             connectNulls={false}
             isAnimationActive={false}
+            style={{ pointerEvents: 'none' }}
           />
         </ComposedChart>
       </ResponsiveContainer>
