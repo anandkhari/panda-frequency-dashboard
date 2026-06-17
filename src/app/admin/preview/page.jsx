@@ -16,7 +16,6 @@ import AvgPercentileChart from '@/components/dashboard/AvgPercentileChart'
 import ScatterPlot from '@/components/dashboard/ScatterPlot'
 import BucketTable from '@/components/dashboard/BucketTable'
 import HealthTable from '@/components/dashboard/HealthTable'
-import SliderControl from '@/components/dashboard/SliderControl'
 
 const TYPE_TABS = [
   { id: 'all', label: 'All' },
@@ -26,14 +25,14 @@ const TYPE_TABS = [
 
 function SectionLabel({ children }) {
   return (
-    <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-3">
+    <p className="text-xs font-medium text-gray-400 dark:text-[#6B6B70] uppercase tracking-wide mb-3">
       {children}
     </p>
   )
 }
 
 function Divider() {
-  return <hr className="border-gray-100 my-6" />
+  return <hr className="border-gray-100 dark:border-[#2D2D2F] my-6" />
 }
 
 export default function AdminPreviewPage() {
@@ -82,7 +81,7 @@ export default function AdminPreviewPage() {
   const repeatBadge = rawRepeatThreshold === 1 ? '1+ booking' : `${rawRepeatThreshold}+ bookings`
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+   <div className="flex min-h-screen bg-gray-50 dark:bg-[#1C1C1E]">
       <SidePanel
         country={country}
         onCountryChange={setCountry}
@@ -91,13 +90,20 @@ export default function AdminPreviewPage() {
         dateRange={dateRange}
         onDateChange={setDateRange}
         availableYears={availableYears}
+        /* ADDED: Missing props required by the new SidePanel */
+        percentile={percentile}
+        rawPercentile={rawPercentile}
+        onPercentileChange={setRawPercentile}
+        repeatThreshold={repeatThreshold}
+        rawRepeatThreshold={rawRepeatThreshold}
+        onRepeatThresholdChange={setRawRepeatThreshold}
       />
 
       {/* ── Sticky header ──────────────────────────────────────────────────── */}
-      <div className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 h-12 px-6 flex items-center justify-between">
+      <div className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-[#242426] border-b border-gray-200 dark:border-[#2D2D2F] h-12 px-6 flex items-center justify-between">
         <button
           onClick={() => router.push('/admin')}
-          className="text-sm text-gray-600 hover:text-gray-900 flex items-center gap-1"
+          className="text-sm text-gray-600 dark:text-[#8E8E93] hover:text-gray-900 flex items-center gap-1"
         >
           ← Back
         </button>
@@ -106,7 +112,7 @@ export default function AdminPreviewPage() {
           {publishedSlug ? (
             <>
               <span className="w-2 h-2 rounded-full bg-green-400 inline-block" />
-              <span className="text-xs text-gray-500">Published</span>
+              <span className="text-xs text-gray-500 dark:text-[#8E8E93]">Published</span>
             </>
           ) : (
             <>
@@ -197,10 +203,10 @@ export default function AdminPreviewPage() {
             {/* Top bar */}
             <div className="flex items-start justify-between flex-wrap gap-4 mb-2">
               <div>
-                <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">
+                <h1 className="text-2xl font-semibold text-gray-900 dark:text-[#F2F2F7] tracking-tight">
                   Booking frequency dashboard
                 </h1>
-                <p className="text-sm text-gray-400 mt-1">
+                <p className="text-sm text-gray-400 dark:text-[#6B6B70] mt-1">
                   Panda Hub · customer cohort analysis
                 </p>
               </div>
@@ -208,63 +214,17 @@ export default function AdminPreviewPage() {
               <div className="flex items-center gap-3">
                 <div className={`flex items-center gap-1.5 transition-opacity duration-150 ${isComputing ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
                   <div className="w-3 h-3 border border-blue-400 border-t-transparent rounded-full animate-spin" />
-                  <span className="text-xs text-gray-400">Updating...</span>
+                  <span className="text-xs text-gray-400 dark:text-[#6B6B70]">Updating...</span>
                 </div>
-
               </div>
             </div>
 
-            <p className="text-xs text-gray-400 mb-8">
+            <p className="text-xs text-gray-400 dark:text-[#6B6B70] mb-8">
               {kpis.totalCustomers.toLocaleString()} customers
               {` · ${getFilterLabel(dateRange)}`}
             </p>
 
-            {/* Sliders */}
-            <div className="flex flex-col gap-2 mb-8">
-              <SliderControl
-                label="Percentile metric"
-                min={1} max={99} step={1}
-                value={rawPercentile}
-                onChange={setRawPercentile}
-                color="blue"
-                badge={
-                  <span className="text-xs font-semibold bg-blue-100 text-blue-700 rounded-md px-2.5 py-1 shrink-0 w-12 text-center tabular-nums">
-                    P{rawPercentile}
-                  </span>
-                }
-              />
-              <SliderControl
-                label="Repeat rate threshold"
-                min={1} max={5} step={1}
-                value={rawRepeatThreshold}
-                onChange={setRawRepeatThreshold}
-                color="green"
-                badge={
-                  <span className="text-xs font-semibold bg-green-100 text-green-700 rounded-md px-2.5 py-1 shrink-0 w-24 text-center tabular-nums">
-                    {repeatBadge}
-                  </span>
-                }
-              />
-            </div>
-
-            {/* Customer type toggle */}
-            {/*
-            <div className="flex gap-1 mb-8">
-              {TYPE_TABS.map(t => (
-                <button
-                  key={t.id}
-                  onClick={() => setCustomerType(t.id)}
-                  className={`text-xs px-3 py-1.5 rounded-lg transition-colors ${
-                    customerType === t.id
-                      ? 'bg-gray-900 text-white'
-                      : 'bg-white border border-gray-200 text-gray-500 hover:bg-gray-50'
-                  }`}
-                >
-                  {t.label}
-                </button>
-              ))}
-            </div>
-            */}
+            {/* DELETED: Old SliderControl block that was duplicating the sliders in the sidebar */}
 
             {/* Charts area */}
             <div className={`transition-opacity duration-150 ${isComputing ? 'opacity-60' : 'opacity-100'}`}>
