@@ -7,6 +7,7 @@ import { filterByDateRange } from '@/lib/analytics/filter'
 import { computeKPIs, computeBucketStats, computeTipStats } from '@/lib/analytics/metrics' // NEW: imported computeTipStats
 import { computeBookingOutcomes } from '@/lib/analytics/bookingOutcomes'
 import { getFilterLabel } from '@/lib/analytics/filter'
+import { getCustomerLabel } from '@/lib/customerLabel'
 import SidePanel from '@/components/dashboard/SidePanel'
 import KPIBooking from '@/components/dashboard/KPIBooking'
 import KPITips from '@/components/dashboard/KPITips' // NEW: imported KPITips
@@ -261,7 +262,7 @@ export default function ViewSlugPage() {
 
           {hasData && (
             <p className="text-xs text-gray-400 dark:text-[#6B6B70] mb-8">
-              {kpis.totalCustomers.toLocaleString()} customers
+              {kpis.totalCustomers.toLocaleString()} {getCustomerLabel(customerType, kpis.totalCustomers)}
               {` · ${getFilterLabel(dateRange)}`}
             </p>
           )}
@@ -291,7 +292,7 @@ export default function ViewSlugPage() {
 
                 <SectionLabel>Business health</SectionLabel>
                 <div className="mb-6">
-                  <KPIHealth kpis={kpis} />
+                  <KPIHealth kpis={kpis} customerType={customerType} />
                 </div>
 
                 <Divider />

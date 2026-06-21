@@ -1,5 +1,7 @@
 'use client'
 
+import { getCustomerLabel } from '@/lib/customerLabel'
+
 function fmt(n) { return '$' + Math.round(n).toLocaleString() }
 
 function InlineBar({ value, max }) {
@@ -22,7 +24,7 @@ export default function BucketTable({ bucketStats, percentile, customerType }) {
     <div className="bg-white dark:bg-[#242426] border border-gray-100 dark:border-[#2D2D2F] rounded-xl p-4">
       <div className="text-sm font-medium text-gray-900 dark:text-[#F2F2F7] mb-0.5">Bucket summary table</div>
       <div className="text-xs text-gray-400 dark:text-[#6B6B70] mb-4">
-        LTV averages and percentiles by customer segment
+        LTV averages and percentiles by {getCustomerLabel(customerType, 1)} segment
       </div>
 
       <div className="overflow-x-auto">
@@ -30,7 +32,7 @@ export default function BucketTable({ bucketStats, percentile, customerType }) {
           <thead>
             <tr className="bg-gray-50 dark:bg-[#2D2D2F]">
               <th className="text-left font-medium text-gray-500 dark:text-[#6B6B70] px-3 py-2 border-b border-gray-100 dark:border-[#2D2D2F]">Bucket</th>
-              <th className="text-right font-medium text-gray-500 dark:text-[#6B6B70] px-3 py-2 border-b border-gray-100 dark:border-[#2D2D2F]">Customers</th>
+              <th className="text-right font-medium text-gray-500 dark:text-[#6B6B70] px-3 py-2 border-b border-gray-100 dark:border-[#2D2D2F]">{getCustomerLabel(customerType, 2, true)}</th>
               <th className="text-left font-medium text-gray-500 dark:text-[#6B6B70] px-3 py-2 border-b border-gray-100 dark:border-[#2D2D2F]">Total LTV</th>
               <th className="text-right font-medium text-gray-500 dark:text-[#6B6B70] px-3 py-2 border-b border-gray-100 dark:border-[#2D2D2F]">Avg LTV</th>
               <th className="text-right font-medium text-gray-500 dark:text-[#6B6B70] px-3 py-2 border-b border-gray-100 dark:border-[#2D2D2F]">P{percentile} LTV</th>

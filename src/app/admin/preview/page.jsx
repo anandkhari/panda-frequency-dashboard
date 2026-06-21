@@ -6,6 +6,7 @@ import { useDashboard } from '@/hooks/useDashboard'
 import { useDashboardStore } from '@/store/dashboardStore'
 import { copyToClipboard } from '@/lib/copyToClipboard'
 import { getFilterLabel } from '@/lib/analytics/filter'
+import { getCustomerLabel } from '@/lib/customerLabel'
 import SidePanel from '@/components/dashboard/SidePanel'
 import KPIBooking from '@/components/dashboard/KPIBooking'
 import KPITips from '@/components/dashboard/KPITips'
@@ -222,7 +223,7 @@ export default function AdminPreviewPage() {
             </div>
 
             <p className="text-xs text-gray-400 dark:text-[#6B6B70] mb-8">
-              {kpis.totalCustomers.toLocaleString()} customers
+              {kpis.totalCustomers.toLocaleString()} {getCustomerLabel(customerType, kpis.totalCustomers)}
               {` · ${getFilterLabel(dateRange)}`}
             </p>
 
@@ -247,7 +248,7 @@ export default function AdminPreviewPage() {
 
               <SectionLabel>Business health</SectionLabel>
               <div className="mb-6">
-                <KPIHealth kpis={kpis} />
+                <KPIHealth kpis={kpis} customerType={customerType} />
               </div>
 
               <Divider />

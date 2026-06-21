@@ -7,11 +7,14 @@ export default function KPITips({ tipStats, customerType = 'all' }) {
     lowestTip = 0,
   } = tipStats || {}
 
-  // Rule 4: If no tipping customers in filtered set, show "—" for all values
-  const hasData = tippingCustomers > 0
-
-  const formatMoney = (val) => (!hasData || val === 0 ? '—' : `$${val.toLocaleString()}`)
-  const formatNumber = (val) => (!hasData || val === 0 ? '—' : val.toLocaleString())
+  const formatMoney = (val) => {
+    if (tipStats == null) return '—'
+    return '$' + (val || 0).toLocaleString()
+  }
+  const formatNumber = (val) => {
+    if (tipStats == null) return '—'
+    return (val || 0).toLocaleString()
+  }
 
   const getTippersLabel = () => {
     if (customerType === 'sub') return 'Tipping subscribers'
@@ -45,7 +48,11 @@ export default function KPITips({ tipStats, customerType = 'all' }) {
       <div className={cardClass}>
         <div className={labelClass}>{getTippersLabel()}</div>
         <div className={valueClass}>{formatNumber(tippingCustomers)}</div>
-        <div className={subClass}>Customers who tipped</div>
+        <div className={subClass}>
+          {customerType === 'sub' ? 'Subscribers who tipped'
+            : customerType === 'non' ? 'Non-subscribers who tipped'
+            : 'Customers who tipped'}
+        </div>
       </div>
 
       {/* Tile 3 — Avg tip per customer */}

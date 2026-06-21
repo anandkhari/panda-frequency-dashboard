@@ -1,4 +1,5 @@
 import { getFilterLabel } from '@/lib/analytics/filter'
+import { getCustomerLabel } from '@/lib/customerLabel'
 
 function fmt(n) { return '$' + Math.round(n).toLocaleString() }
 function fmtK(n) {
@@ -36,6 +37,11 @@ export default function KPIBooking({ kpis, dateRange, percentile, repeatThreshol
     customerType === 'non' ? `Non-subscribers made ${nLabel}` :
     `Made ${nLabel}`
 
+  const meanLabel =
+    customerType === 'sub' ? 'Mean across subscribers' :
+    customerType === 'non' ? 'Mean across non-subscribers' :
+    'Mean across segments'
+
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
       <Card
@@ -51,7 +57,7 @@ export default function KPIBooking({ kpis, dateRange, percentile, repeatThreshol
       <Card
         label={avgLabel}
         value={fmt(kpis.avgLTV)}
-        sub="Mean across segments"
+        sub={meanLabel}
       />
       <Card
         label={`P${percentile} LTV`}

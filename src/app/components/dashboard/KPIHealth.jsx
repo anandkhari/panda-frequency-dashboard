@@ -1,6 +1,7 @@
 'use client'
 
 import { useTheme } from 'next-themes'
+import { getCustomerLabel } from '@/lib/customerLabel'
 
 function fmtK(n) {
   if (n >= 1000000) return '$' + (n / 1000000).toFixed(1) + 'm'
@@ -26,7 +27,7 @@ function Card({ label, value, sub, lightBg, darkBg, lightText, darkText }) {
   )
 }
 
-export default function KPIHealth({ kpis }) {
+export default function KPIHealth({ kpis, customerType = 'all' }) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
       <Card
@@ -41,7 +42,7 @@ export default function KPIHealth({ kpis }) {
       <Card
         label="Refund losses"
         value={fmtK(kpis.refunded)}
-        sub="Returned to customers"
+        sub={`Returned to ${getCustomerLabel(customerType, 2)}`}
         lightBg="#FCEBEB"
         darkBg="#2D2D2F"
         lightText="#A32D2D"

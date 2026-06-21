@@ -6,6 +6,7 @@ import { useDashboard } from '@/hooks/useDashboard'
 import { useDashboardStore } from '@/store/dashboardStore'
 import { copyToClipboard } from '@/lib/copyToClipboard'
 import { getFilterLabel } from '@/lib/analytics/filter'
+import { getCustomerLabel } from '@/lib/customerLabel'
 import SidePanel from '@/components/dashboard/SidePanel'
 import KPIBooking from '@/components/dashboard/KPIBooking'
 import KPITips from '@/components/dashboard/KPITips'
@@ -216,7 +217,7 @@ export default function DashboardPage() {
 
           {/* Data summary line */}
           <p className="text-xs text-gray-400 dark:text-[#6B6B70] mb-8">
-            {kpis.totalCustomers.toLocaleString()} customers
+            {kpis.totalCustomers.toLocaleString()} {getCustomerLabel(customerType, kpis.totalCustomers)}
             {paymentsCount > 0 ? ` · ${paymentsCount.toLocaleString()} payments` : ''}
             {subscriberCount > 0 ? ` · ${subscriberCount.toLocaleString()} subscribers` : ''}
             {` · ${getFilterLabel(dateRange)}`}
@@ -225,7 +226,11 @@ export default function DashboardPage() {
           {/* Charts area dims while recomputing */}
           <div className={`transition-opacity duration-150 ${isComputing ? 'opacity-60' : 'opacity-100'}`}>
 
-            <SectionLabel>Mean across segments</SectionLabel>
+            <SectionLabel>
+              {customerType === 'sub' ? 'Mean across subscribers'
+                : customerType === 'non' ? 'Mean across non-subscribers'
+                : 'Mean across segments'}
+            </SectionLabel>
             <div className="mb-8">
               <KPIBooking
                 kpis={kpis}
@@ -247,7 +252,7 @@ export default function DashboardPage() {
 
             <SectionLabel>Business health</SectionLabel>
             <div className="mb-6">
-              <KPIHealth kpis={kpis} />
+              <KPIHealth kpis={kpis} customerType={customerType} />
             </div>
 
             <Divider />

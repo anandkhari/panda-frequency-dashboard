@@ -46,13 +46,13 @@ function DateOption({ active, onClick, children }) {
       onClick={onClick}
       className={`flex items-center gap-3 w-[calc(100%-1.5rem)] mx-3 text-left px-3 py-2.5 rounded-lg text-sm transition-all duration-200 ${
         active
-          ? 'bg-white dark:bg-[#2D2D2F] text-indigo-700 dark:text-[#F2F2F7] font-medium shadow-sm ring-1 ring-slate-200/50 dark:ring-[#3A3A3C]'
-          : 'text-slate-600 dark:text-[#8E8E93] hover:bg-slate-200/50 dark:hover:bg-[#2D2D2F] hover:text-slate-900 dark:hover:text-[#F2F2F7]'
+          ? 'bg-indigo-50 text-indigo-700 font-semibold ring-1 ring-indigo-200 dark:bg-[#3A3A3C] dark:text-[#F2F2F7] dark:ring-[#48484A]'
+          : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50 dark:text-[#AEAEB2] dark:hover:text-[#F2F2F7] dark:hover:bg-[#2D2D2F]'
       }`}
     >
       <span
         className={`w-1.5 h-1.5 rounded-full shrink-0 transition-colors duration-300 ${
-          active ? 'bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.4)]' : 'bg-slate-300 dark:bg-[#3A3A3C]'
+          active ? 'bg-indigo-600 shadow-sm dark:bg-[#F2F2F7]' : 'bg-gray-300 dark:bg-[#48484A]'
         }`}
       />
       {children}
@@ -66,8 +66,8 @@ function SectionHeader({ label, active, open, onClick }) {
       onClick={onClick}
       className={`flex items-center justify-between w-[calc(100%-1.5rem)] mx-3 text-left px-3 py-2.5 rounded-lg text-sm transition-all duration-200 ${
         active
-          ? 'text-indigo-700 dark:text-[#F2F2F7] font-medium'
-          : 'text-slate-600 dark:text-[#8E8E93] hover:bg-slate-200/50 dark:hover:bg-[#2D2D2F] hover:text-slate-900 dark:hover:text-[#F2F2F7]'
+          ? 'border-l-2 border-indigo-500 text-gray-900 font-semibold bg-indigo-50/50 dark:border-indigo-400 dark:text-[#F2F2F7] dark:bg-[#2D2D2F]'
+          : 'text-gray-600 font-medium dark:text-[#8E8E93] hover:bg-slate-200/50 dark:hover:bg-[#2D2D2F] hover:text-gray-900 dark:hover:text-[#F2F2F7]'
       }`}
     >
       <span>{label}</span>

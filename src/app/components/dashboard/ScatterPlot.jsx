@@ -14,6 +14,7 @@ import {
 } from 'recharts'
 import { useTheme } from 'next-themes'
 import { BUCKETS } from '@/lib/analytics/constants'
+import { getCustomerLabel } from '@/lib/customerLabel'
 
 // Increased slightly for better density without killing performance
 const TOTAL_DOT_LIMIT = 1000
@@ -278,8 +279,29 @@ export default function ScatterPlot({
   return (
     <div className="bg-white dark:bg-[#242426] border border-gray-100 dark:border-[#2D2D2F] rounded-xl p-4 mb-3">
       <div className="flex items-center justify-between mb-0.5">
-        <div className="text-sm font-medium text-gray-900 dark:text-[#F2F2F7]">
-          Individual customer LTV — all buckets
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-gray-900 dark:text-[#F2F2F7]">
+            Individual {getCustomerLabel(customerType, 1)} LTV — all buckets
+          </span>
+
+          {/* Info icon with tooltip */}
+          <div className="relative group">
+            <svg
+              className="w-3.5 h-3.5 text-gray-400 dark:text-[#6B6B70] cursor-help"
+              fill="none" viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <circle cx="12" cy="12" r="10" strokeWidth="2"/>
+              <path strokeLinecap="round" strokeWidth="2" d="M12 16v-4M12 8h.01"/>
+            </svg>
+
+            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 z-50 opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none">
+              <div className="bg-gray-900 dark:bg-[#F2F2F7] text-white dark:text-[#1C1C1E] text-[11px] rounded-lg px-3 py-2 text-center leading-relaxed shadow-lg">
+                Showing a representative sample of 1,000 dots. Click Expand for the full dataset with filters.
+                <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900 dark:border-t-[#F2F2F7]"></div>
+              </div>
+            </div>
+          </div>
         </div>
         <button
           onClick={() => router.push('/dashboard/scatter')}
@@ -292,7 +314,7 @@ export default function ScatterPlot({
         </button>
       </div>
       <div className="text-xs text-gray-400 dark:text-[#6B6B70] mb-4">
-        Each dot = one customer · x-axis jittered within bucket ·
+        Each dot = one {getCustomerLabel(customerType, 1)} · x-axis jittered within bucket ·
         color = segment · lines = avg &amp; P{rawPercentile}
       </div>
 
