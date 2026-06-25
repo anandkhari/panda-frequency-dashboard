@@ -5,13 +5,14 @@ import { useTheme } from 'next-themes'
 import { useParams } from 'next/navigation'
 import { loadPublishedSnapshot } from '@/lib/supabaseService'
 import { filterByDateRange } from '@/lib/analytics/filter'
-import { computeKPIs, computeBucketStats, computeTipStats } from '@/lib/analytics/metrics' // NEW: imported computeTipStats
+import { computeKPIs, computeBucketStats, computeTipStats, computeReturnIntervals } from '@/lib/analytics/metrics'
 import { computeBookingOutcomes } from '@/lib/analytics/bookingOutcomes'
 import { getFilterLabel } from '@/lib/analytics/filter'
 import { getCustomerLabel } from '@/lib/customerLabel'
 import SidePanel from '@/components/dashboard/SidePanel'
 import KPIBooking from '@/components/dashboard/KPIBooking'
-import KPITips from '@/components/dashboard/KPITips' // NEW: imported KPITips
+import KPITips from '@/components/dashboard/KPITips'
+import KPIReturnIntervals from '@/components/dashboard/KPIReturnIntervals'
 import KPIHealth from '@/components/dashboard/KPIHealth'
 import BookingOutcomes from '@/components/dashboard/BookingOutcomes'
 import BucketBarChart from '@/components/dashboard/BucketBarChart'
@@ -166,11 +167,21 @@ export default function ViewSlugPage() {
     [viewCustomers]
   )
 
-  // NEW: Compute tip stats for the shared page. 
-  // viewCustomers already handles the customerType toggle and dateRange filtering!
   const tipStats = useMemo(() =>
     computeTipStats(viewCustomers),
     [viewCustomers]
+  )
+
+  // Return intervals — uses all-time (unfiltered) joined data, not date-filtered
+  const allTimeCustomers = useMemo(() => {
+    if (customerType === 'sub') return joined.filter(c => c.isSubscriber)
+    if (customerType === 'non') return joined.filter(c => !c.isSubscriber)
+    return joined
+  }, [joined, customerType])
+
+  const returnIntervals = useMemo(() =>
+    computeReturnIntervals(allTimeCustomers),
+    [allTimeCustomers]
   )
 
   const allBucketStats = useMemo(() =>
@@ -286,11 +297,18 @@ export default function ViewSlugPage() {
                   <KPIBooking kpis={kpis} dateRange={dateRange} percentile={percentile} repeatThreshold={repeatThreshold} customerType={customerType} />
                 </div>
 
-                {/* NEW: Tip analysis section added here */}
                 <SectionLabel>Tip analysis</SectionLabel>
                 <div className="mb-8">
                   <KPITips
                     tipStats={tipStats}
+                    customerType={customerType}
+                  />
+                </div>
+
+                <SectionLabel>Return intervals</SectionLabel>
+                <div className="mb-8">
+                  <KPIReturnIntervals
+                    returnIntervals={returnIntervals}
                     customerType={customerType}
                   />
                 </div>

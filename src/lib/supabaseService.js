@@ -38,6 +38,12 @@ function toCustomerRow(country, customer) {
     has_tipped: customer.hasTipped || false,
     highest_tip: customer.highestTip || 0,
     lowest_tip: customer.lowestTip || 0,
+    // NEW: Return interval fields
+    avg_gap_days:    customer.avgGapDays    || 0,
+    median_gap_days: customer.medianGapDays || 0,
+    min_gap_days:    customer.minGapDays    || 0,
+    max_gap_days:    customer.maxGapDays    || 0,
+    return_pattern:  customer.returnPattern || 'single',
   }
 }
 
@@ -172,6 +178,12 @@ function toJoinedCustomer(r) {
     hasTipped: r.has_tipped || false,
     highestTip: r.highest_tip || 0,
     lowestTip: r.lowest_tip || 0,
+    // NEW: Return interval fields
+    avgGapDays:    r.avg_gap_days    || 0,
+    medianGapDays: r.median_gap_days || 0,
+    minGapDays:    r.min_gap_days    || 0,
+    maxGapDays:    r.max_gap_days    || 0,
+    returnPattern: r.return_pattern  || 'single',
   }
 }
 
@@ -424,12 +436,22 @@ export async function deletePublishedSnapshot(slug) {
 /*
 IMPORTANT: Run this SQL in Supabase before uploading new data:
 
-
+ALTER TABLE customer_snapshots
+  ADD COLUMN IF NOT EXISTS avg_gap_days    integer DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS median_gap_days integer DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS min_gap_days    integer DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS max_gap_days    integer DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS return_pattern  text    DEFAULT 'single';
 
 ALTER TABLE published_customers
   ADD COLUMN IF NOT EXISTS tip_count integer DEFAULT 0,
   ADD COLUMN IF NOT EXISTS tip_total integer DEFAULT 0,
   ADD COLUMN IF NOT EXISTS has_tipped boolean DEFAULT false,
   ADD COLUMN IF NOT EXISTS highest_tip integer DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS lowest_tip integer DEFAULT 0;
+  ADD COLUMN IF NOT EXISTS lowest_tip integer DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS avg_gap_days    integer DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS median_gap_days integer DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS min_gap_days    integer DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS max_gap_days    integer DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS return_pattern  text    DEFAULT 'single';
 */

@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { useDashboardStore } from '@/store/dashboardStore'
 import { filterByDateRange } from '@/lib/analytics/filter'
-import { computeKPIs, computeBucketStats, computeTipStats } from '@/lib/analytics/metrics'
+import { computeKPIs, computeBucketStats, computeTipStats, computeReturnIntervals } from '@/lib/analytics/metrics'
 import { computeBookingOutcomes } from '@/lib/analytics/bookingOutcomes'
 
 export function useDashboard() {
@@ -69,11 +69,33 @@ export function useDashboard() {
     return filteredCustomers
   }, [filteredCustomers, filteredSubs, filteredNonSubs, customerType])
 
+  // All-time customers (not date-filtered) — segment toggle still applies
+  const allTimeCustomers = useMemo(() => {
+    const all = store.joined
+    if (customerType === 'sub') return all.filter(c => c.isSubscriber)
+    if (customerType === 'non') return all.filter(c => !c.isSubscriber)
+    return all
+  }, [store.joined, customerType])
+
   // KPIs and outcomes follow the active view
   const kpis = useMemo(() =>
     computeKPIs(viewCustomers, percentile, repeatThreshold),
     [viewCustomers, percentile, repeatThreshold]
   )
+
+  // Repeat rate always uses all-time data regardless of date filter
+  const allTimeRepeatRate = useMemo(() => {
+    if (!allTimeCustomers.length) return 0
+    const repeaters = allTimeCustomers.filter(
+      c => (c.bookingCount ?? 0) >= repeatThreshold
+    ).length
+    return Math.round((repeaters / allTimeCustomers.length) * 100 * 10) / 10
+  }, [allTimeCustomers, repeatThreshold])
+
+  const kpisWithAllTimeRepeat = useMemo(() => ({
+    ...kpis,
+    repeatRate: allTimeRepeatRate,
+  }), [kpis, allTimeRepeatRate])
 
   const bucketStats = useMemo(() =>
     computeBucketStats(viewCustomers, percentile),
@@ -99,6 +121,12 @@ export function useDashboard() {
     [tipCustomers]
   )
 
+  // Return intervals — uses all-time data, not date-filtered
+  const returnIntervals = useMemo(
+    () => computeReturnIntervals(allTimeCustomers),
+    [allTimeCustomers]
+  )
+
   // All-three bucket stat sets for AvgPercentileChart and BucketTable tabs
   const allBucketStats = useMemo(() =>
     computeBucketStats(filteredCustomers, percentile),
@@ -114,21 +142,6 @@ export function useDashboard() {
     computeBucketStats(filteredNonSubs, percentile),
     [filteredNonSubs, percentile]
   )
-
-  console.log('tipStats:', tipStats)
-  console.log('filteredCustomers sample hasTipped:', filteredCustomers.slice(0, 5).map(c => c.hasTipped))
-
-  console.log('tip debug:', {
-    totalCustomers: filteredCustomers.length,
-    tippingCustomers: filteredCustomers
-      .filter(c => c.hasTipped).length,
-    sampleHasTipped: filteredCustomers
-      .slice(0,3)
-      .map(c => c.hasTipped),
-    sampleTipTotal: filteredCustomers
-      .slice(0,3)
-      .map(c => c.tipTotal),
-  })
 
   return {
     // country
@@ -162,7 +175,7 @@ export function useDashboard() {
     // computed data
     filteredCustomers,
     viewCustomers,
-    kpis,
+    kpis: kpisWithAllTimeRepeat,
     bucketStats,
     bookingOutcomes,
     allBucketStats,
@@ -170,5 +183,7 @@ export function useDashboard() {
     nonBucketStats,
     // NEW: Computed Tip Stats
     tipStats,
+    // NEW: Return interval stats (all-time, not date-filtered)
+    returnIntervals,
   }
 }

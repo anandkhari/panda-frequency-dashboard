@@ -11,6 +11,7 @@ import { getCustomerLabel } from '@/lib/customerLabel'
 import SidePanel from '@/components/dashboard/SidePanel'
 import KPIBooking from '@/components/dashboard/KPIBooking'
 import KPITips from '@/components/dashboard/KPITips'
+import KPIReturnIntervals from '@/components/dashboard/KPIReturnIntervals'
 import KPIHealth from '@/components/dashboard/KPIHealth'
 import BookingOutcomes from '@/components/dashboard/BookingOutcomes'
 import BucketBarChart from '@/components/dashboard/BucketBarChart'
@@ -67,7 +68,8 @@ export default function AdminPreviewPage() {
     allBucketStats,
     subBucketStats,
     nonBucketStats,
-    tipStats, // NEW: Extract tipStats
+    tipStats,
+    returnIntervals,
   } = useDashboard()
 
   async function handlePublish() {
@@ -241,11 +243,18 @@ export default function AdminPreviewPage() {
                 <KPIBooking kpis={kpis} dateRange={dateRange} percentile={percentile} repeatThreshold={repeatThreshold} customerType={customerType} />
               </div>
 
-              {/* NEW: Tip analysis section added here */}
               <SectionLabel>Tip analysis</SectionLabel>
               <div className="mb-8">
                 <KPITips
                   tipStats={tipStats}
+                  customerType={customerType}
+                />
+              </div>
+
+              <SectionLabel>Return intervals</SectionLabel>
+              <div className="mb-8">
+                <KPIReturnIntervals
+                  returnIntervals={returnIntervals}
                   customerType={customerType}
                 />
               </div>
